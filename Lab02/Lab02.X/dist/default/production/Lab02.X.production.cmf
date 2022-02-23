@@ -1,0 +1,237 @@
+%CMF
+# %PSECTS Section
+# For each object file, details of its psects are enumerated here.
+# The begining of the section is indicated by %PSECTS.  The first
+# line indicates the name of the first object file, e.g.
+#    $foo.obj
+# Each line that follows describes a psect in that object file, until
+# the next object file.  The lines that describe a psect have the
+# format:
+#    <psect name> <class name> <space> <link address> <load addresses> <length> <delta> <reloc>
+# All addresses and the length are given in unqualified hexadecimal
+# in delta units.  Any other numeric values are decimal.
+%PSECTS
+$build/default/production/main.o
+resetVec CODE 0 0 0 6B 2 1
+udata_bank0 BANK0 1 20 20 3 1 1
+config CONFIG 4 2007 2007 2 2 1
+# %UNUSED Section
+# This section enumerates the unused ranges of each CLASS. Each entry
+# is described on a single line as follows:
+#    <class name> <range> <delta>
+# Addresses given in the range are in hexadecimal and units of delta.
+%UNUSED
+RAM 23-6F 1
+RAM A0-EF 1
+RAM 110-16F 1
+RAM 190-1EF 1
+BANK0 23-6F 1
+BANK1 A0-EF 1
+BANK2 110-16F 1
+BANK3 190-1EF 1
+CONST 6B-1FFF 2
+ENTRY 6B-1FFF 2
+IDLOC 2000-2003 2
+CODE 6B-1FFF 2
+SFR2 100-10F 1
+SFR3 180-18F 1
+COMMON 70-7F 1
+EEDATA 2100-21FF 2
+STRCODE 6B-1FFF 2
+STRING 6B-1FFF 2
+# %LINETAB Section
+# This section enumerates the file/line to address mappings.
+# The beginning of the section is indicated by %LINETAB.
+# The first line indicates the name of the first object file, e.g.
+#   $foo.obj
+# Each line that follows describes a single mapping until the next
+# object file.  Mappings have the following format:
+#    <address> <psect name> <class name> ><line number>:<file name>
+# The address is absolute and given given in unqualified hex 
+# in delta units of the psect. All mappings within an object file
+# are in ascending order of addresses.
+# All other numeric values are in decimal.
+%LINETAB
+$build/default/production/main.o
+0 resetVec CODE >41:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+0 resetVec CODE >43:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+2 resetVec CODE >44:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+3 resetVec CODE >48:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+4 resetVec CODE >49:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+5 resetVec CODE >50:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+7 resetVec CODE >51:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+8 resetVec CODE >52:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+A resetVec CODE >53:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+B resetVec CODE >57:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+C resetVec CODE >58:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+D resetVec CODE >59:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+E resetVec CODE >60:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+F resetVec CODE >64:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+10 resetVec CODE >65:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+11 resetVec CODE >66:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+12 resetVec CODE >67:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+13 resetVec CODE >68:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+14 resetVec CODE >71:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+15 resetVec CODE >72:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+16 resetVec CODE >73:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+17 resetVec CODE >74:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+18 resetVec CODE >75:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+19 resetVec CODE >78:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+1A resetVec CODE >79:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+1B resetVec CODE >80:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+1C resetVec CODE >81:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+1D resetVec CODE >82:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+1E resetVec CODE >83:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+1F resetVec CODE >84:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+20 resetVec CODE >85:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+21 resetVec CODE >86:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+22 resetVec CODE >87:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+23 resetVec CODE >90:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+24 resetVec CODE >91:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+25 resetVec CODE >92:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+26 resetVec CODE >93:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+27 resetVec CODE >94:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+28 resetVec CODE >97:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+29 resetVec CODE >98:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+2A resetVec CODE >99:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+2B resetVec CODE >100:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+2C resetVec CODE >101:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+2D resetVec CODE >107:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+2E resetVec CODE >108:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+2F resetVec CODE >109:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+30 resetVec CODE >110:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+31 resetVec CODE >111:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+32 resetVec CODE >114:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+33 resetVec CODE >115:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+34 resetVec CODE >116:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+35 resetVec CODE >117:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+36 resetVec CODE >118:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+37 resetVec CODE >121:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+38 resetVec CODE >122:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+39 resetVec CODE >123:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+3A resetVec CODE >124:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+3B resetVec CODE >126:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+3C resetVec CODE >127:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+3D resetVec CODE >128:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+3E resetVec CODE >130:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+3F resetVec CODE >131:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+40 resetVec CODE >132:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+41 resetVec CODE >133:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+42 resetVec CODE >134:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+43 resetVec CODE >135:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+44 resetVec CODE >136:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+45 resetVec CODE >138:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+46 resetVec CODE >139:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+47 resetVec CODE >140:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+48 resetVec CODE >142:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+49 resetVec CODE >143:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+4A resetVec CODE >144:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+4B resetVec CODE >146:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+4C resetVec CODE >147:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+4D resetVec CODE >148:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+4E resetVec CODE >150:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+4F resetVec CODE >151:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+50 resetVec CODE >152:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+51 resetVec CODE >154:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+52 resetVec CODE >155:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+53 resetVec CODE >156:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+54 resetVec CODE >157:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+55 resetVec CODE >158:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+56 resetVec CODE >159:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+57 resetVec CODE >160:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+58 resetVec CODE >162:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+59 resetVec CODE >165:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+5B resetVec CODE >166:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+5C resetVec CODE >167:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+5D resetVec CODE >168:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+5E resetVec CODE >169:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+5F resetVec CODE >170:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+60 resetVec CODE >173:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+61 resetVec CODE >174:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+62 resetVec CODE >175:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+63 resetVec CODE >176:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+64 resetVec CODE >177:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+65 resetVec CODE >178:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+66 resetVec CODE >181:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+67 resetVec CODE >182:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+68 resetVec CODE >183:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+69 resetVec CODE >184:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+6A resetVec CODE >185:/home/andrea/UVG/Ciclos/Ciclo5/Cursos/PrograDeMicros/Laboratorio/Lab02/Archivos/Lab02.X/main.s
+# %SYMTAB Section
+# An enumeration of all symbols in the program.
+# The beginning of the section is indicated by %SYMTAB.
+# Each line describes a single symbol as follows:
+#    <label> <value> [-]<load-adj> <class> <space> <psect> <file-name>
+# The value and load-adj are both in unqualified hexadecimal.
+# All other numeric values are in decimal.  The load-adj is the
+# quantity one needs to add to the symbol value in order to obtain the load
+# address of the symbol.  This value may be signed. If the symbol
+# was defined in a psect then <psect> will be "-". File-name
+# is the name of the object file in which the symbol was defined.
+%SYMTAB
+__Hspace_0 6B 0 ABS 0 - -
+__Hspace_1 23 0 ABS 0 - -
+__Hspace_3 0 0 ABS 0 - -
+__Hspace_4 4010 0 ABS 0 - -
+__Hudata_bank0 0 0 ABS 0 udata_bank0 -
+__Hudata_bank1 0 0 ABS 0 udata_bank1 -
+__Hudata_bank2 0 0 ABS 0 udata_bank2 -
+__Hudata_bank3 0 0 ABS 0 udata_bank3 -
+__LresetVec 0 0 ABS 0 resetVec -
+__HresetVec 0 0 ABS 0 resetVec -
+__Hedata 0 0 ABS 0 edata -
+__Hudata 0 0 ABS 0 udata -
+__Hconfig 4012 0 CONFIG 4 config -
+__Ledata 0 0 ABS 0 edata -
+__Ludata 0 0 ABS 0 udata -
+__Hcode 0 0 ABS 0 code -
+__Hdata 0 0 ABS 0 data -
+__Lcode 0 0 ABS 0 code -
+__Ldata 0 0 ABS 0 data -
+__S0 0 0 ABS 0 - -
+__S1 23 0 ABS 0 - -
+__S3 0 0 ABS 0 - -
+__Lconfig 0 0 CONFIG 4 config -
+__Lspace_0 0 0 ABS 0 - -
+__Lspace_1 0 0 ABS 0 - -
+__Lspace_3 0 0 ABS 0 - -
+__Lspace_4 0 0 ABS 0 - -
+__Ludata_bank0 0 0 ABS 0 udata_bank0 -
+__Ludata_bank1 0 0 ABS 0 udata_bank1 -
+__Ludata_bank2 0 0 ABS 0 udata_bank2 -
+__Ludata_bank3 0 0 ABS 0 udata_bank3 -
+__Hudata_shr 0 0 ABS 0 udata_shr -
+__Ludata_shr 0 0 ABS 0 udata_shr -
+# %SPLITSTAB Section
+# This section enumerates all the psect splits performed by the assembler.
+# The beginning of the section is indicated by %SPLITSTAB.
+# Each line is a record a particular split, where the parent psect is on
+# the left and the child on the right.  Note that a child psect is always
+# split form the top of the parent psect. All splits from a given parent
+# are listed in the order in which they occurred.
+%SPLITSTAB
+# %DABS Section
+# This section contains a table of all usuage of the assember
+# directive DABS in the program. Each line has the following format:
+#   <name> <space> <address> <size>
+# If the DABS was originally labelled then that shall be <name>,
+# otherwise name will be "-".  The <space> number is in decimal.
+# <address> and <size> are in byte units as unqaulified hexadecimal
+%DABS
+# %SEGMENTS Section
+# This sections enumerates the segments of the program.  Each segment
+# is described on a single line as follows:
+#    <name> <space> <link address> <file address> <size> <delta>
+# Addresses and size are in unqualified hexadecimal.  The link address
+# and size are in units of delta. The file address is in units of bytes.
+# All other numeric quantities are in decimal.
+%SEGMENTS
+udata_bank0 1 20 20 3 1
+# %NOTES Section
+# This section contains data of all the note-psects.  The beginning of the section
+# is indicated by %NOTES. The first line indicates the name and decimal
+# byte-length of the first note-psect, e.g.
+#   $codecov_info_hdr 16
+# Each line that follows contains the byte-data of the psect in hexadecimal as a
+# space-separated list. These lines are limited to 16 bytes of data.
+%NOTES

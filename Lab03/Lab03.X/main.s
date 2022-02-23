@@ -90,27 +90,26 @@ MAIN:
     
 LOOP:
     
-    ; Contador de 4 bits con timer0
-    btfss   T0IF
-    goto    LOOP
-    call    REINICIO_TMR0
-    incf    PORTB
-    incf    Y
-    movf    PORTB, 0
-    andlw   0x0F
-    movwf   PORTB
+    ; Contador con Timer0 en PORTB (4 bits)
+    btfss   T0IF	    ; Revisar si está activada la bandera del Timer0.
+    goto    LOOP	    ; Si está activada, volver a LOOP.
+    call    REINICIO_TMR0   ; Reiniciar el Timer0.
+    incf    PORTB, 0	    ; Aumentar PORTB; ahí está el contador con Timer0.
+    andlw   0x0F	    ; Dejar en W solo 4 bits (es el valor de PORTB).
+    movwf   PORTB	    ; Devolver el valor en W a PORTB.
+    incf    Y, 0    	    ; Aumentar Y, mover el valor a W.
     
-    ; Contador de 4 bits: aumenta cuando timer0 llega a 10, y reinicia timer0.
-    movf    Y, 0
-    andlw   0x0F    ; Convertir a 4 bits y guardar de nuevo en W.
-    xorlw   1010B   ; Revisar que Y = 1010 = A = 10 en decimal.
-    btfsc   STATUS, 2    ; Si Y=0, se ejecuta la siguiente línea; de lo contrario no.
-    incf    PORTD, 0
-    andlw   0x0F    ; Convertir PORTD a 4 bits, guardar de nuevo en W.
-    movwf   PORTD   ; Mandar contenido de W al PORTD para ver la salida.
-    call    REINICIO_TMR0   ; Reiniciar Timer0, y de paso, su contador.
+    ; Contador de segundos en PORTD (4 bits)
+    sublw   0xA		    ; Restar con 0x0A para revisar que sean iguales.
+    andlw   0x0F	    ; Dejar solo 4 bits.
+    movwf   Y		    ; Mover de regreso el valor a Y.
+    btfsc   STATUS, 2	    ; Bandera zero para operaciones lógicas.	    
+    incf    PORTD, 0	    ; Incrementar PORTD y guardar en W.
+    andlw   0x0F	    ; Dejar solo 4 bits.
+    movwf   PORTD	    ; Mover de nuevo el valor a PORTD.
+    call    REINICIO_TMR0   ; Reiniciar Timer0.
     
-    ; Display de 7 segmentos
+    ; Display de 7 segmentos en PORTC
     btfsc   PORTA, 0
     call    INC_PORTA
     btfsc   PORTA, 1
@@ -120,13 +119,13 @@ LOOP:
     movwf   PORTC
     
     ; LED de alarma y reinicio de contador de 4 bits.
-    movf    X, 0
-    xorlw   PORTD   ; Revisar si los valores de display y contador son iguales.
-    btfss   STATUS, 2
-    goto    $+2	    ; Si no son iguales los valores, se salta lineas: 127 y 128
-    xorwf   0x4F    ; Voltear bit del LED de alarma.
-    clrf    PORTD   ; Reiniciar el PORTD del contador de segundos.
-    
+;    movf    X, 0
+;    xorlw   PORTD   ; Revisar si los valores de display y contador son iguales.
+;    btfss   STATUS, 2
+;    goto    $+2	    ; Si no son iguales los valores, se salta lineas: 127 y 128
+;    xorwf   0x4F    ; Voltear bit del LED de alarma.
+;    clrf    PORTD   ; Reiniciar el PORTD del contador de segundos.
+;    
     goto    LOOP
     
 ;-------------------- SUBROUTINES    --------------------
