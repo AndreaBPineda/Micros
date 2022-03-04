@@ -3,11 +3,13 @@
 ;   AUTOR:		Andrea Barrientos Pineda (Carnet: 20575)
 ;   COMPILADOR:		pic-as (v2.32), MPLABX v6.00
 ;
-;   PROGRAMA:		Contador de segundos en TIMER1 y TIMER2 del PIC
+;   PROGRAMA:		Contador de segundos en TMR1 y displays de 7 segmentos
+;			(Lab 06 - Postlab)
 ;   HARDWARE:		    
+;	- ENTRADAS:	TMR0 y TMR1 del PIC
 ;	- SALIDAS:
 ;	    - PORTC:	Display de 7 segmentos (x2) (PINES: RC0-RC7)
-;	    - PORTD:	Transistores		    (PINES: RD0-RD1)
+;	    - PORTD:	Transistores (x2)	    (PINES: RD0-RD1)
 ;
 ;   CREADO:		26/02/2022
 ;   MODIFICADO:		03/03/2022
@@ -97,8 +99,8 @@ POP:
 INT_TMR0:			; Muxeo de displays
     RESET_TMR0 255		; Reiniciar TMR0
     MOVF    PORTD, W		; Mover PORTD a W
-    XORLW   0x03		; Voltear bits 0 y 1 de PORTD
-    MOVWF   PORTD		; Regresar valores a PORTD
+    XORLW   0x03		; Voltear bits 0 y 1 (voltear selectores)
+    MOVWF   PORTD		; Regresar valores a PORTD para cambiar display
     CALL    MOSTRAR_VALOR	; Mostrar valores en los displays
     RETURN
     
@@ -143,7 +145,6 @@ MAIN:
     BANKSEL PORTA		; Banco 0
     
 LOOP:
-    MOVF    SEGUNDOS, W		; Mover SEGUNDOS a W
     CALL    GET_NIBBLES		; Obtener nibbles en VALOR
     CALL    SET_DISPLAY		; Colocar nibbles en los displays
     GOTO    LOOP
