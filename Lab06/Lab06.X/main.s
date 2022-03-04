@@ -252,12 +252,12 @@ CONFIG_INT:			; Configuración de interrupciones
 GET_NIBBLES:			; Obtener nibbles bajo y alto de VALOR
     
     ; Nibble bajo
-    MOVLW   0X0F		; Colocar 0x0F en W
+    MOVLW   0x0F		; Colocar 0x0F en W
     ANDWF   SEGUNDOS, W		; Obtener nibble bajo de SEGUNDOS
     MOVWF   NIBBLES		; Mover nibble bajo a NIBBLES
     
     ; Nibble alto
-    MOVLW   0XF0		; Colocar 0xF0 en W
+    MOVLW   0xF0		; Colocar 0xF0 en W
     ANDWF   SEGUNDOS, W		; Obtener nibble alto de SEGUNDOS
     MOVWF   NIBBLES+1		; Mover nibble alto a NIBBLES
     SWAPF   NIBBLES+1, F	; Swap en los bits de NIBBLES+1
