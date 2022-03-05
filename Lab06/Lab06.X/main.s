@@ -12,7 +12,7 @@
 ;	    - PORTD:	Transistores (x2)	    (PINES: RD0-RD1)
 ;
 ;   CREADO:		26/02/2022
-;   MODIFICADO:		03/03/2022
+;   MODIFICADO:		05/03/2022
     
 ;-------------------- DISPOSITIVO Y LIBRERIAS --------------------
 PROCESSOR 16F887
@@ -58,9 +58,11 @@ PSECT udata_shr			; Variables para interrupciones
     STATUS_TEMP:    DS 1	; Registro temporal para STATUS
     
 PSECT udata_bank0		; Variables para el programa
-    SEGUNDOS:	    DS 1	; Contar segundos
-    NIBBLES:	    DS 2	; Nibbles de VALOR
-    DISPLAY:	    DS 2	; Nibbles para los displays
+    UNIDADES:	    DS 1	; Contar unidades de segundos
+    DECENAS:	    DS 1	; Contar decenas de segundos
+    SELECTOR:	    DS 1	; Selector de display activo
+    VALOR_0:	    DS 1	; Valor para display 0
+    VALOR_1:	    DS 1	; Valor para display 1
     
 PSECT resVect, class=CODE, abs, delta=2
 ORG 00h				; Posición 0000h: Vector Reset
@@ -82,10 +84,10 @@ PUSH:
     MOVWF   STATUS_TEMP		; Mover STATUS de W hacia STATUS_TEMP
     
 ISR:
-    BTFSC   T0IF		; Revisar interrupción de TMR0
-    CALL    INT_TMR0		; Ejecutar subrutina de TMR0
     BTFSC   TMR1IF		; Revisar interrupción de TMR1
     CALL    INT_TMR1		; Ejecutar subrutina de TMR1
+    BTFSC   T0IF		; Revisar interrupción de TMR0
+    CALL    INT_TMR0		; Ejecutar subrutina de TMR0
     
 POP:
     SWAPF   STATUS_TEMP, W	; Swap en STATUS_TEMP y guardar en W
@@ -99,14 +101,17 @@ POP:
 INT_TMR0:			; Muxeo de displays
     RESET_TMR0 255		; Reiniciar TMR0
     MOVF    PORTD, W		; Mover PORTD a W
-    XORLW   0x03		; Voltear bits 0 y 1 (voltear selectores)
+    XORLW   0x03		; Voltear bits 0 y 1 (invertir selectores)
     MOVWF   PORTD		; Regresar valores a PORTD para cambiar display
-    CALL    MOSTRAR_VALOR	; Mostrar valores en los displays
+    CALL    DISPLAY_0		; Mostrar valores en los displays
+    CALL    DISPLAY_1		; Mostrar valores en los displays
     RETURN
     
 INT_TMR1:			; Aumentar variable SEGUNDOS cada segundo
     RESET_TMR1 0x0B, 0xDC	; Reiniciar TMR1
-    INCF    SEGUNDOS		; Incrementar PORTC
+    INCF    UNIDADES		; Incrementar contador
+    CALL    CONTADOR_DECIMAL	; Convertir contador a decenas y unidades
+    CALL    RESET_COUNTER	; Resetear contador al llegar a 60
     RETURN
     
 PSECT code, delta=2, abs
@@ -145,7 +150,6 @@ MAIN:
     BANKSEL PORTA		; Banco 0
     
 LOOP:
-    CALL    GET_NIBBLES		; Obtener nibbles en VALOR
     CALL    SET_DISPLAY		; Colocar nibbles en los displays
     GOTO    LOOP
     
@@ -163,20 +167,21 @@ CONFIG_IO:			; Configuración de I/O
     
     BANKSEL PORTA		; Banco 0
     CLRF    PORTC		; Limpiar PORTC
-    CLRF    PORTD		; Limpiar PORTD
+    BCF	    PORTD, 0		; Limpiar selector de Display 0
+    BSF	    PORTD, 1		; Activar selector de Display 1
     
-    ; Valores iniciales:
-    BCF	    PORTD, 0		; Selector Display 0: 0
-    BSF	    PORTD, 1		; Selector Display 1: 1
+    CLRF    UNIDADES		; Limpiar variable de unidades de segundos
+    CLRF    DECENAS		; Limpiar variable de decenas de segundos
+    CLRF    SELECTOR		; Limpiar variable de display activo
     
     RETURN
     
 CONFIG_CLOCK:			; Configuración de Oscilador
     BANKSEL OSCCON		; Banco 1
     BSF	    OSCCON, 0		; Usar reloj interno
-    BCF	    OSCCON, 6		; 0
-    BSF	    OSCCON, 5		; 1	   -> Frecuencia: 500kHz
-    BSF	    OSCCON, 4		; 1
+    BSF	    OSCCON, 6		; 0
+    BCF	    OSCCON, 5		; 1	   -> Frecuencia: 1MHz
+    BCF	    OSCCON, 4		; 1
     RETURN
     
 CONFIG_TMR0:			; Configuración de TMR0
@@ -217,47 +222,52 @@ CONFIG_INT:			; Configuración de interrupciones
     
 ;-------------------- SUBRUTINAS DE DISPLAYS --------------------
     
-GET_NIBBLES:			; Obtener nibbles bajo y alto de VALOR
+CONTADOR_DECIMAL:		; Contador con unidades y decenas combinadas
+    MOVF    UNIDADES, W		; Mover UNIDADES a W
+    SUBLW   9			; Restarle 9 a W, para ver si hay decenas
+    BTFSC   STATUS, 0		; Revisar si la bandera de carry C es 1
+    RETURN			
+    BTFSS   STATUS, 0		; Revisar si la bandera de carry C es 0
+    CALL    OBTENER_DECENAS	; Pasar a obtener las decenas
+    RETURN
     
-    ; Nibble bajo
-    MOVLW   0x0F		; Colocar 0x0F en W
-    ANDWF   SEGUNDOS, W		; Obtener nibble bajo de SEGUNDOS
-    MOVWF   NIBBLES		; Mover nibble bajo a NIBBLES
+OBTENER_DECENAS:		; Obtener decenas de segundos
+    INCF    DECENAS		; Incrementar decenas
+    CLRF    UNIDADES		; Limpiar unidades; vuelven a ser 0
+    RETURN
     
-    ; Nibble alto
-    MOVLW   0xF0		; Colocar 0xF0 en W
-    ANDWF   SEGUNDOS, W		; Obtener nibble alto de SEGUNDOS
-    MOVWF   NIBBLES+1		; Mover nibble alto a NIBBLES
-    SWAPF   NIBBLES+1, F	; Swap en los bits de NIBBLES+1
-    
+RESET_COUNTER:			; Reiniciar el contador al llegar a 60
+    MOVF    DECENAS, W		; Mover DECENAS a W
+    SUBLW   5			; Restar 5 a W, para limitar las decenas a 6
+    BTFSS   STATUS, 0		; Revisar bandera de Carry C
+    CLRF    DECENAS		; Al ejecutar la resta, limpiar las decenas
     RETURN
     
 SET_DISPLAY:			; Escoger valor de la tabla para cada display
     
-    ; Display 0
-    MOVF    NIBBLES, W		; Mover NIBBLES a W
+    ; Display 0 (decenas, display de la izquierda)
+    MOVF    DECENAS, W		; Mover DECENAS a W
     CALL    DISPLAY_7SEG	; Ejecutar tabla de valores de display
-    MOVWF   DISPLAY		; Mover valor resultante a DISPLAY
+    MOVWF   VALOR_0		; Mover valor resultante a VALOR_0
     
-    ; Display 1
-    MOVF    NIBBLES+1, W	; Mover NIBBLES+1 a W
+    ; Display 1 (unidades, display de la derecha)
+    MOVF    UNIDADES, W		; Mover UNIDADES a W
     CALL    DISPLAY_7SEG	; Ejecutar tabla de valores de display
-    MOVWF   DISPLAY+1		; Mover valor resultante a DISPLAY+1
+    MOVWF   VALOR_1		; Mover valor resultante a VALOR_1
     
     RETURN
-
-MOSTRAR_VALOR:			; Mostrar valor en los displays de 7 segmentos
-    BTFSC   PORTD, 0		; Revisar selector del Display 0
-    CALL    DISPLAY_0		; Si el selector es 1, activar Display 0
-    CALL    DISPLAY_1		; Si el selector es 0, activar Display 1
     
-DISPLAY_0:			; Mostrar valor en el primer display (0)
-    MOVF    DISPLAY, W		; Mover DISPLAY a W
+DISPLAY_0:			; Mostrar valor en el display de decenas
+    BTFSS   PORTD, 0		; Revisar el selector del Display 0
+    RETURN
+    MOVF    VALOR_0, W		; Mover valor del Display 0 a W
     MOVWF   PORTC		; Mover W a PORTC
     RETURN
     
-DISPLAY_1:			; Mostrar valor en el segundo display (1)
-    MOVF    DISPLAY+1, W	; Mover DISPLAY+1 a W
+DISPLAY_1:			; Mostrar valor en el display de unidades
+    BTFSS   PORTD, 1		; Revisar el selector del Display 1
+    RETURN
+    MOVF    VALOR_1, W		; Mover valor del Display 1 a W
     MOVWF   PORTC		; Mover W a PORTC
     RETURN
 
