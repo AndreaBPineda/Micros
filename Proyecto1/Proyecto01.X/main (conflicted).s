@@ -12,15 +12,15 @@
 ;	- DISPOSITIVO: PIC16F887
 ;
 ;	- ENTRADAS:
-;	    - Pushbutton 01 - Modo de edicion		    (PORTB: RB0)
-;	    - Pushbutton 02 - Funcion/Display		    (PORTB: RB1)
-;	    - Pushbutton 03 - Incrementar/iniciar	    (PORTB: RB2)
-;	    - Pushbutton 04 - Decrementar/detener	    (PORTB: RD3)
+;	    - Pushbutton 01 - Modo de edicion		    (PORTB: RB7)
+;	    - Pushbutton 02 - Funcion/Display		    (PORTB: RB2)
+;	    - Pushbutton 03 - Incrementar/iniciar	    (PORTB: RB1)
+;	    - Pushbutton 04 - Decrementar/detener	    (PORTB: RD6)
 ;
 ;	- SALIDAS:
 ;	    - LEDs (x4)	    - Indicadores de función	    (PORTA: RA0-RA3)
-;	    - LEDs (x1)     - Indicador de edición          (PORTA: RA4)
-;	    - LEDs (x1)	    - Alarma			    (PORTA: RA5)
+;	    - LEDs (x1)     - Indicador de edición          (PORTA: RA5)
+;	    - LEDs (x1)	    - Alarma			    (PORTA: RA6)
 ;	    - Display (7seg, 4digits) - Pantalla de reloj
 ;	      (displays 0-3 de izquierda a derecha)
 ;		- Segmentos de displays			    (PORTC: RC0-RC7)
@@ -54,6 +54,23 @@ RESET_TMR0 MACRO		; RESET TMR0
     MOVWF   TMR0		; Set interruption time in TMR0
     BCF	    T0IF		; Clear interruption flag TMR0
     ENDM
+    
+RESET_COUNT MACRO VALUE, LIMIT	; CHECK IF VALUE REACHED COUNTER LIMIT
+    MOVF    VALUE, W		; Move selected value to W
+    SUBLW   LIMIT		; Substract LIMIT
+    ENDM
+    
+PUSHBUTTON MACRO PORT, BIT, FLAG	; MACRO FOR ALL PUSHBUTTONS
+    BANKSEL TRISA
+    BTFSC   PORT, BIT
+    BTFSC   PORT, BIT
+    ENDM
+    
+INVERT_FLAG MACRO FLAG, HEX_VAL	; MACRO FOR SETTING/CLEARING FLAGS
+    MOVF    FLAG, W
+    XORLW   HEX_VAL
+    MOVWF   FLAG
+    ENDM
 
 ;-------------------- VARIABLES --------------------
 
@@ -83,14 +100,13 @@ PSECT udata_bank0		; PROGRAM VARIABLES
     
     MODE_EN:	    DS 1	; MODE/FUNCTION ENABLES
     
-		    ; Bits	  | 7  | 6  | 5     | 4  | 3  | 2  | 1  | 0  |
-		    ; Content	  |EN_2|EN_1|ALRM_ON|EDIT|ALRM|TMR |DATE|CLK |
+		    ; Bits	  | 7  | 6  | 5  | 4  | 3  | 2  | 1  | 0  |
+		    ; Content	  |    |EN_2|EN_1|EDIT|ALRM|TMR |DATE|CLK |
 		    
 		    ; 0-3: Function        (Only one can be enabled at a time)
 		    ; 4	 : Edit mode	   (1: enabled, 0: disabled).
 		    ; 5  : Control Timer    (1: start, 0: stop)
 		    ; 6  : Control Alarm    (1: start, 0: stop)
-		    ; 7  : Active alarm indicator (0: off, blinking: on).
 		    
     DISPLAY_EN:     DS 1	; DISPLAY ENABLES: SELECTOR FOR DISPLAYS
 		    
@@ -120,6 +136,23 @@ PSECT udata_bank0		; PROGRAM VARIABLES
 		    ; 3: Action 2
 			; 1: Decrement current display value
 			; 0: Stop TMR or ALRM (whichever is currently selected)
+		    
+    LED_FLAG:	    DS 1	; LED FLAGS: INDICATE WHICH IF ON OR OFF
+		    
+		    ; Bits	  | 7  | 6  | 5      | 4  | 3  | 2  | 1  | 0  |
+		    ; Content	  |    |    |ALRM_LED|EDIT|ALRM|TMR |DATE|CLK |
+		    
+		    ; 0-3: Indicator LEDs for clock, date, timer and alarm.
+		    ; 4  : Edit mode LED indicator.
+		    ; 5  : LED to indicate the alarm is activated.
+		    
+		    ; In all cases: 1 is on, and 0 is off.
+		    
+    EN_TEMP:	    DS 1	; TEMPORAL REGISTER FOR ENABLE REGISTERS
+    DISP_TEMP:	    DS 1	; TEMPORAL REGISTER FOR DISPLAY VALUES
+    
+    UPPER_LIMIT:    DS 1	; VARIABLE FOR HIGHEST VALUE OF A DISPLAY
+    LOWER_LIMIT:    DS 1	; VARIABLE FOR LOWEST VALUE OF A DISPLAY
 				
 PSECT resVect, class=CODE, abs, delta=2
 ORG 00h				; Posicionn 0000h: Vector Reset
@@ -141,9 +174,6 @@ PUSH:				; SAVE W AND STATUS VALUES
     MOVWF   STATUS_TEMP		; W -> STATUS_TEMP
     
 ISR:				; INTERRUPTIONS
-    BANKSEL PORTA
-    BTFSC   RBIF
-    CALL    INT_PORTB
     BTFSC   T0IF		; Check TMR0 interruption flag
     CALL    INT_TMR0		; Execute TMR0 interruption on T0IF = 1
     
@@ -158,21 +188,6 @@ POP:				; RECOVER W AND STATUS VALUES
     
 INT_TMR0:			; TMR0 INTERRUPTION
     RESET_TMR0			; Reset TMR0
-    CALL    CHECK_EDIT_MODE
-    CALL    SET_LEDS		; Set values of all LEDs
-    RETURN
-    
-INT_PORTB:			; PORTB INTERRUPTION
-    
-    ; Activate/Desactivate Edition Mode
-    BTFSC   PORTB, 0		; Check pushbutton 0
-    RETURN			; If not pressed, end interruption
-    MOVF    PB_FLAG, W		; If pressed, invert value of flag
-    XORLW   0X01		
-    MOVWF   PB_FLAG		
-    
-    BCF	    RBIF		; Clean PORTB interruption flag
-    
     RETURN
     
 PSECT code, delta=2, abs
@@ -181,10 +196,10 @@ ORG 100h			; Posicion 0100h: tables and main
 DISPLAY_TABLE:			; 7Seg Display values table
     
     ; Config:
-    CLRF    PCLATH		; Clean PCLATH
-    BSF     PCLATH, 0		; Enable Bit 0
-    ANDLW   0x0F		; Turn W to 4 Bits
-    ADDWF   PCL, F		; Sum PCL to W, save in F
+    CLRF    PCLATH		; Limpiar PCLATH
+    BSF     PCLATH, 0		; Activar PCLATH, Bit 0
+    ANDLW   0x0F		; Convertir W a 4 Bits
+    ADDWF   PCL, F		; Sumar PCL a W, guardar en F
     
     ; Values:
     ;       pgfedcba		hexadecimal
@@ -210,10 +225,7 @@ MAIN:				; PROGRAM SETUP
     CALL    CONFIG_IO		; I/O config
     CALL    CONFIG_CLOCK	; Oscilator config
     CALL    CONFIG_TMR0		; TMR0 config
-    CALL    CONFIG_IOCB		; PORTB interruptions config
     CALL    CONFIG_INT		; Interruptions config
-    
-    RESET_TMR0
     
     BANKSEL PORTA		; Bank 0
     
@@ -228,21 +240,22 @@ CONFIG_IO:			; I/O CONFIG
     CLRF    ANSEL		; Digital I/O
     CLRF    ANSELH		; Digital I/O
     
+    
     BANKSEL TRISA		; Bank 1
     
     ; Input ports:
-    BSF	    TRISB, 0		; RB0 - Pushbutton 0 (Edit mode)
-    BSF	    TRISB, 1		; RB1 - Pushbutton 1 (Functions)
-    BSF	    TRISB, 2		; RB2 - Pushbutton 2 (Increment/start)
-    BSF	    TRISB, 3		; RD3 - Pushbutton 3 (Decrement/stop)
+    BSF	    TRISB, 7		; RB7 - Pushbutton 0 (Edit mode)
+    BSF	    TRISB, 2		; RB2 - Pushbutton 1 (Functions)
+    BSF	    TRISB, 1		; RB1 - Pushbutton 2 (Increment/start)
+    BSF	    TRISD, 6		; RD6 - Pushbutton 3 (Decrement/stop)
     
     ; Output ports:
     BCF	    TRISA, 0		; RA0 - LED hour function
     BCF	    TRISA, 1		; RA1 - LED date function
     BCF	    TRISA, 2		; RA2 - LED timer function
     BCF	    TRISA, 3		; RA3 - LED alarm function
-    BCF	    TRISA, 4		; RA5 - LED alarm set
-    BCF	    TRISA, 5		; RA6 - LED edit mode indicator
+    BCF	    TRISA, 5		; RA5 - LED alarm set
+    BCF	    TRISA, 6		; RA6 - LED edit mode indicator
     
     CLRF    TRISC		; PORTC - Display segments
     
@@ -257,11 +270,7 @@ CONFIG_IO:			; I/O CONFIG
     CLRF    PORTA		
     CLRF    PORTB		
     CLRF    PORTC		
-    CLRF    PORTD
-    
-    ; Clean registers:
-    CLRF    PB_FLAG
-    CLRF    MODE_EN
+    CLRF    PORTD		
     
     RETURN
     
@@ -269,9 +278,9 @@ CONFIG_CLOCK:			; OSCILATOR CONFIGURATION
    
     BANKSEL OSCCON		; Bank 2
     BSF	    OSCCON, 0		; Enable internal clock
-    BCF	    OSCCON, 6		; 0
-    BSF	    OSCCON, 5		; 1	   -> Freq: 500kHz
-    BSF	    OSCCON, 4		; 1
+    BSF	    OSCCON, 6		; 0
+    BCF	    OSCCON, 5		; 1	   -> Freq: 1MHz
+    BCF	    OSCCON, 4		; 1
     
     RETURN
     
@@ -286,70 +295,62 @@ CONFIG_TMR0:			; TMR0 CONFIGURATION
     
     RETURN
     
-CONFIG_IOCB:			; PORTB CONFIGURATION FOR PUSHBUTTONS
-   
-    BANKSEL TRISA
-    
-    ; Enable interruptions on change
-    BSF	    IOCB, 0
-    BSF	    IOCB, 1
-    BSF	    IOCB, 2
-    BSF	    IOCB, 3
-    
-    ; Enable weak pull-up
-    BSF	    WPUB, 0
-    BSF	    WPUB, 1
-    BSF	    WPUB, 2
-    BSF	    WPUB, 3
-    
-    BCF	    OPTION_REG, 7	; Enable PORTB internal pull-ups
-    
-    BANKSEL PORTA
-    BCF	    RBIF		; Limpiar bandera de PORTB.
-    RETURN
-    
 CONFIG_INT:			; INTERRUPTIONS CONFIGURATION
-
+   
     BANKSEL INTCON		; Bank 0
     BSF	    GIE			; Enable global interruptions
     BSF	    PEIE		; Enable periferic interruptions
     BCF	    T0IF		; Clean TMR0 interruption flag
     BSF	    T0IE		; Enable TMR0 interruptions
-    BCF	    RBIF		; Clean PORTB interruption flag
-    BSF	    RBIE		; Enable PORTB interruptions
    
+    RETURN
+
+;-------------------- INPUT SUBROUTINES --------------------
+    
+PB0:				; PUSHBUTTON 0: EDITION MODE
+    PUSHBUTTON	PORTB, 7, PB_FLAG	; check pushbutton 0
+    
+    
+PB1:				; Pushbutton 1: Function/Display
+    RETURN
+    
+PB2:				; Pushbutton 2: Increment/Start
+    RETURN
+    
+PB3:				; Pushbutton 3: Decrement/Stop
     RETURN
     
 ;-------------------- CONTROL SUBROUTINES --------------------
 
-CHECK_EDIT_MODE:		; CHECK IF EDIT MODE IS ACTIVATED/DESACTIVATED
-    BTFSC   PB_FLAG, 0		; If set, activate edit mode
-    CALL    ENABLE_EDIT_MODE
-    BTFSS   PB_FLAG, 0		; If clear, activate normal use mode
-    CALL    ENABLE_NORMAL_MODE
-    RETURN
+;S0_CHECK_PB0:			; CHECK PB0 FLAG
+;    BTFSC   PB_FLAG, 0		; If set, call S1
+;    CALL    S1			
+;    BTFSS   PB_FLAG, 0		; If clear, call S2
+;    CALL    S2
     
-ENABLE_EDIT_MODE:		; SET FLAG VALUES TO USE EDIT MODE
-    BSF	    PB_FLAG, 1		; Enable display navigation
-    BSF	    PB_FLAG, 2		; Enable display value increment
-    BSF	    PB_FLAG, 3		; Enable display value decrement
-    BSF	    MODE_EN, 4		; Enable edit mode for functions
-    RETURN
+;S1_CHECK_EDIT_MODE:		; ACTIVATE EDIT MODE
+;    BSF	    PB_FLAG, 1		; Enable display navigation
+;    BSF	    PB_FLAG, 2		; Enable display value increment
+;    BSF	    PB_FLAG, 3		; Enable display value decrement
+;    BSF	    MODE_EN, 4		; Enable edit mode for functions
+;    RETURN
+;    
+;S2_NORMAL_MODE:			; DISABLE EDIT MODE
+;    BCF	    PB_FLAG, 1		; Enable function navigation
+;    BCF	    PB_FLAG, 2		; Enable TMR and ALRM start function
+;    BCF	    PB_FLAG, 3		; Enable TMR and ALRM stop function
+;    BCF	    MODE_EN, 4		; Disable edit mode for functions
+;    RETURN
+;    
+;S3_PB1:				; CHECK PB1 FLAG
+;    BTFSC   PB_FLAG, 1		; If set,
+;    
+;    BTFSS   PB_FLAG, 1		; If clear,
+;    RETURN
     
-ENABLE_NORMAL_MODE:		; CLEAR FLAG VALUES TO USE NORMAL MODE
-    BCF	    PB_FLAG, 1		; Enable function navigation
-    BCF	    PB_FLAG, 2		; Enable TMR and ALRM start function
-    BCF	    PB_FLAG, 3		; Enable TMR and ALRM stop function
-    BCF	    MODE_EN, 4		; Disable edit mode for functions
-    RETURN
+;-------------------- FUNCTION SUBROUTINES --------------------
+
     
 ;-------------------- OUTPUT SUBROUTINES --------------------
     
-SET_LEDS:			; PREPARE VALUES FOR LEDS
-    MOVF    MODE_EN, W		; Move function enables to 
-    ANDLW   0X3F		; 0011 1111: Bits 0-5 are LEDs, avoid the rest.
-    MOVWF   PORTA		; Send value to PORTA for updating all LEDs
-   
-    RETURN
- 
 END
