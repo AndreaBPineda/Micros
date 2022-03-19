@@ -4,7 +4,7 @@
 ;   COMPILADOR:		pic-as (v2.32), MPLABX v6.00
 ;
 ;   CREADO:		05/03/2022
-;   MODIFICADO:		12/03/2022
+;   MODIFICADO:		14/03/2022
 ;
 ;   PROGRAMA:		Proyecto 1: Reloj digital
 ;   HARDWARE:
@@ -15,7 +15,7 @@
 ;	    - Pushbutton 01 - Modo de edicion		    (PORTB: RB0)
 ;	    - Pushbutton 02 - Funcion/Display		    (PORTB: RB1)
 ;	    - Pushbutton 03 - Incrementar/iniciar	    (PORTB: RB2)
-;	    - Pushbutton 04 - Decrementar/detener	    (PORTB: RD3)
+;	    - Pushbutton 04 - Decrementar/detener	    (PORTB: RB3)
 ;
 ;	- SALIDAS:
 ;	    - LEDs (x4)	    - Indicadores de función	    (PORTA: RA0-RA3)
@@ -54,6 +54,13 @@ RESET_TMR0 MACRO		; RESET TMR0
     MOVWF   TMR0		; Set interruption time in TMR0
     BCF	    T0IF		; Clear interruption flag TMR0
     ENDM
+    
+RESET_COUNT MACRO COUNTER, LIMIT
+    MOVF    COUNTER, W		; Move counter reg to W
+    SUBLW   LIMIT		; Subtract Limit (N-1), for a desired value N.
+    BTFSS   STATUS, 0		; If W > LIMIT, clear counter
+    CLRF    COUNTER		; Clear counter reg
+    ENDM
 
 ;-------------------- VARIABLES --------------------
 
@@ -62,6 +69,8 @@ PSECT udata_shr			; INTERRUPTION VARIABLES
     STATUS_TEMP:    DS 1	; Temporal STATUS
     
 PSECT udata_bank0		; PROGRAM VARIABLES
+    
+    ; Counter registers for all functions
     
     CLK_HRS:	    DS 1	; Clock: hours
     CLK_MIN:	    DS 1	; Clock: minutes
@@ -80,17 +89,28 @@ PSECT udata_bank0		; PROGRAM VARIABLES
     DISP_1:	    DS 1	; Display 1 value
     DISP_2:	    DS 1	; Display 2 value
     DISP_3:	    DS 1	; Display 3 value
+    DOTS:	    DS 1	; Central dots value
+    
+    ; Enables and flags
     
     MODE_EN:	    DS 1	; MODE/FUNCTION ENABLES
     
 		    ; Bits	  | 7  | 6  | 5     | 4  | 3  | 2  | 1  | 0  |
 		    ; Content	  |EN_2|EN_1|ALRM_ON|EDIT|ALRM|TMR |DATE|CLK |
 		    
-		    ; 0-3: Function        (Only one can be enabled at a time)
-		    ; 4	 : Edit mode	   (1: enabled, 0: disabled).
-		    ; 5  : Control Timer    (1: start, 0: stop)
-		    ; 6  : Control Alarm    (1: start, 0: stop)
-		    ; 7  : Active alarm indicator (0: off, blinking: on).
+		    ; 0-3: Function (Only one set at a time)
+		    ; 4	 : Edit mode
+			; 1: enabled
+			; 0: disabled
+		    ; 5  : Control Timer
+			; 1: start
+			; 0: stop
+		    ; 6  : Control Alarm
+			; 1: start
+			; 0: stop
+		    ; 7  : Active alarm indicator
+			; 0: alarm off
+			; Blinking: alarm on
 		    
     DISPLAY_EN:     DS 1	; DISPLAY ENABLES: SELECTOR FOR DISPLAYS
 		    
@@ -122,7 +142,7 @@ PSECT udata_bank0		; PROGRAM VARIABLES
 			; 0: Stop TMR or ALRM (whichever is currently selected)
 				
 PSECT resVect, class=CODE, abs, delta=2
-ORG 00h				; Posicionn 0000h: Vector Reset
+ORG 00h				; Posicion 0000h: Vector Reset
     
 ;-------------------- VECTOR RESET --------------------
 
@@ -136,18 +156,21 @@ ORG 04h				; Posicion 0004h: Interruptions
 ;-------------------- INTERRUPTIONS --------------------
     
 PUSH:				; SAVE W AND STATUS VALUES
+    
     MOVWF   W_TEMP		; W -> W_TEMP
     SWAPF   STATUS, W		; Swap STATUS, and save in W
     MOVWF   STATUS_TEMP		; W -> STATUS_TEMP
     
 ISR:				; INTERRUPTIONS
-    BANKSEL PORTA
-    BTFSC   RBIF
-    CALL    INT_PORTB
+    
+    BANKSEL PORTA		; Bank 0
+    BTFSC   RBIF		; Check PORTB interruption flag
+    CALL    INT_PORTB		; Execute PORTB interruption on RBIF = 1
     BTFSC   T0IF		; Check TMR0 interruption flag
     CALL    INT_TMR0		; Execute TMR0 interruption on T0IF = 1
     
 POP:				; RECOVER W AND STATUS VALUES
+    
     SWAPF   STATUS_TEMP, W	; Swap STATUS_TEMP, save in W
     MOVWF   STATUS		; Move W to STATUS
     SWAPF   W_TEMP, F		; Swap W_TEMP, save in register F
@@ -156,20 +179,38 @@ POP:				; RECOVER W AND STATUS VALUES
     
 ;-------------------- SUBRUTINAS DE INTERRUPCION --------------------
     
-INT_TMR0:			; TMR0 INTERRUPTION
+INT_TMR0:			; TMR0 INTERRUPTIONS: CONTROL AND OUTPUTS
+    
     RESET_TMR0			; Reset TMR0
-    CALL    CHECK_EDIT_MODE
+    
+    ; Check values of enables and flags
+    CALL    CHECK_EDIT_MODE	; Check status of edit mode (active/disabled)
+    
+    ; Set output values
     CALL    SET_LEDS		; Set values of all LEDs
+    
     RETURN
     
-INT_PORTB:			; PORTB INTERRUPTION
+INT_PORTB:			; PORTB INTERRUPTION: INPUT SUBROUTINES
     
-    ; Activate/Desactivate Edition Mode
+    ; Pushbutton 0: Edition mode control
+    
     BTFSC   PORTB, 0		; Check pushbutton 0
     RETURN			; If not pressed, end interruption
     MOVF    PB_FLAG, W		; If pressed, invert value of flag
     XORLW   0X01		
-    MOVWF   PB_FLAG		
+    MOVWF   PB_FLAG
+    
+    ; Pushbutton 1: Navigation of functions/displays
+    
+    ; Aquí empieza la buggeación :v
+    ; Al llamar el pushbutton 1, enloquece el led del pushbutton 0.
+    ;BTFSC   PORTB, 1		; Check pushbutton 1
+    ;RETURN			; If not pressed, end interruption
+    ;BTFSC   PB_FLAG, 1		; Check action flag, if 1, navigate displays.
+    ;CALL    NAV_DISPLAYS	
+    ;BTFSS   PB_FLAG, 1		; Check action flag, if 0, navigate functions.
+    ;CALL    NAV_FUNCTIONS	
     
     BCF	    RBIF		; Clean PORTB interruption flag
     
@@ -213,7 +254,7 @@ MAIN:				; PROGRAM SETUP
     CALL    CONFIG_IOCB		; PORTB interruptions config
     CALL    CONFIG_INT		; Interruptions config
     
-    RESET_TMR0
+    RESET_TMR0			; Reset TMR0
     
     BANKSEL PORTA		; Bank 0
     
@@ -262,6 +303,11 @@ CONFIG_IO:			; I/O CONFIG
     ; Clean registers:
     CLRF    PB_FLAG
     CLRF    MODE_EN
+    CLRF    DISP_0
+    CLRF    DISP_1
+    CLRF    DISP_2
+    CLRF    DISP_3
+    CLRF    DOTS
     
     RETURN
     
@@ -325,7 +371,7 @@ CONFIG_INT:			; INTERRUPTIONS CONFIGURATION
 CHECK_EDIT_MODE:		; CHECK IF EDIT MODE IS ACTIVATED/DESACTIVATED
     BTFSC   PB_FLAG, 0		; If set, activate edit mode
     CALL    ENABLE_EDIT_MODE
-    BTFSS   PB_FLAG, 0		; If clear, activate normal use mode
+    BTFSS   PB_FLAG, 0		; If clear, activate normal mode
     CALL    ENABLE_NORMAL_MODE
     RETURN
     
@@ -343,13 +389,108 @@ ENABLE_NORMAL_MODE:		; CLEAR FLAG VALUES TO USE NORMAL MODE
     BCF	    MODE_EN, 4		; Disable edit mode for functions
     RETURN
     
+NAV_FUNCTIONS:			; NAVIGATE FUNCTIONS (IN NORMAL MODE)
+    RLF	    MODE_EN		; Disable current function, enable next one
+    BTFSS   MODE_EN, 3		; End subroutine if 0 (not in the last function)
+    RETURN			
+    BCF	    MODE_EN, 3		; Disable current function (last function)
+    BSF	    MODE_EN, 0		; Enable first function again
+    
+    RETURN
+    
+NAV_DISPLAYS:			; NAVIGATE DISPLAYS (IN EDIT MODE)
+    RLF	    DISPLAY_EN		; Disable current display, enable next display
+    BTFSS   DISPLAY_EN, 3	; End subroutine if 0 (not in display 3)
+    RETURN
+    BCF	    DISPLAY_EN, 3	; Disable current display (display 3)
+    BSF	    DISPLAY_EN, 0	; Enable display 0 again
+    
+    RETURN
+    
+;-------------------- CONTROL SUBROUTINES --------------------
+
+RESET_CLK:			; RESET HRS, MINUTES AND SECONDS OF CLOCK
+    RESET_COUNT	CLK_HRS, 23	; Reset hours at 24 (Count goes 0-23)
+    RESET_COUNT CLK_MIN, 59	; Reset minutes at 60 (Count goes 0-59)
+    RESET_COUNT CLK_SEC, 59	; Reset seconds at 60 (Count goes 0-59)
+    RETURN
+    
+;RESET_DATE:			; RESET DAYS AND MONTHS OF DATE
+    ; PENDIENTE
+    ;RETURN
+
+;RESET_TMR:			; RESET HRS, MINUTES AND SECONDS OF CLOCK
+    ;RETURN
+    
 ;-------------------- OUTPUT SUBROUTINES --------------------
     
 SET_LEDS:			; PREPARE VALUES FOR LEDS
-    MOVF    MODE_EN, W		; Move function enables to 
+    MOVF    MODE_EN, W		; Move function enables to W.
     ANDLW   0X3F		; 0011 1111: Bits 0-5 are LEDs, avoid the rest.
     MOVWF   PORTA		; Send value to PORTA for updating all LEDs
    
     RETURN
- 
+    
+SET_DISPLAYS:			; PREPARE VALUES FOR DISPLAYS
+    
+    ; Display 0
+    MOVF    DISP_0, W
+    CALL    DISPLAY_TABLE
+    MOVWF   DISP_0
+    
+    ; Display 1
+    MOVF    DISP_1, W
+    CALL    DISPLAY_TABLE
+    MOVWF   DISP_1
+    
+    ; Display 2
+    MOVF    DISP_2, W
+    CALL    DISPLAY_TABLE
+    MOVWF   DISP_2
+    
+    ; Display 3
+    MOVF    DISP_3, W
+    CALL    DISPLAY_TABLE
+    MOVWF   DISP_3
+    
+    RETURN
+    
+SET_DOTS:			; SET VALUES FOR CENTRAL DOTS
+    MOVF    DOTS, W		; Move DOTS value to W
+    MOVWF   PORTC		; Move W to PORTC
+    RETURN
+    
+SELECT_DISPLAY:			; UPDATE DISPLAY SELECTORS
+    MOVF    DISPLAY_EN, W	; Move Display (and Dots) enables to W
+    MOVWF   PORTD		; Move W to PORTD, to update enables
+    RETURN
+    
+DISPLAY_0:			; SHOW DISPLAY 0
+    BTFSS   PORTD, 0
+    RETURN
+    MOVF    DISP_0, W
+    MOVWF   PORTC
+    RETURN
+    
+DISPLAY_1:			; SHOW DISPLAY 1
+    BTFSS   PORTD, 1
+    RETURN
+    MOVF    DISP_1, W
+    MOVWF   PORTC
+    RETURN
+    
+DISPLAY_2:			; SHOW DISPLAY 2
+    BTFSS   PORTD, 2
+    RETURN
+    MOVF    DISP_2, W
+    MOVWF   PORTC
+    RETURN
+    
+DISPLAY_3:			; SHOW DISPLAY 3
+    BTFSS   PORTD, 3
+    RETURN
+    MOVF    DISP_3, W
+    MOVWF   PORTC
+    RETURN
+    
 END
