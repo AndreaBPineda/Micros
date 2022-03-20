@@ -402,7 +402,7 @@ SET_EDIT_MODE:			; SET FLAG VALUES TO USE EDIT MODE
     BSF	    PB_FLAG, 3		; Enable display value decrement
     
     ; Mode enables
-    BSF	    MODE_EN, 4		; Enable edit mode for functions
+    BSF	    MODE_EN, 4		; Enable edit mode
     
     RETURN
     
@@ -414,7 +414,8 @@ SET_NORMAL_MODE:		; CLEAR FLAG VALUES TO USE NORMAL MODE
     BCF	    PB_FLAG, 3		; Enable TMR and ALRM stop function
     
     ; Mode enables
-    BCF	    MODE_EN, 4		; Disable edit mode for functions
+    BSF	    DISPLAY_EN, 0	; Set default display to edit
+    BCF	    MODE_EN, 4		; Disable edit mode
     
     RETURN
     
