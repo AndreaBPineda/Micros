@@ -68,6 +68,15 @@ INVERT_BITS MACRO REG, BITS	    ; INVERT VALUE OF SELECTED BITS
     MOVWF   REG			    ; Move W back to the selected register
     ENDM
     
+REG_NAVI MACRO REG, LIMIT	; NAVIGATE SELECTED BITS OF A REGISTER
+    MOVF    REG, W		; Move selected register to W
+    RLF	    REG			; Disable current function, enable next one
+    BTFSS   REG, LIMIT		; End subroutine if 0 (not in the last function)
+    RETURN			
+    BCF	    REG, LIMIT		; Disable current function (last function)
+    BSF	    REG, 0		; Enable first function again
+    MOVWF   REG			; Move W back to the selected register
+    ENDM
     
 ;-------------------- VARIABLES ------------------------------------------------
 
@@ -208,22 +217,19 @@ INT_TMR0:			; TMR0 INTERRUPTIONS: VALUE CONTROL AND OUTPUTS
     
 INT_PORTB:			; PORTB INTERRUPTION: CHECK ALL INPUTS
     
-    PB0:
     ; Pushbutton 0: Edition mode control
-    BTFSC   PORTB, 0		; Check pushbutton 0  
-    GOTO    PB1
-    INVERT_BITS	PB_FLAG, 0X01
-    BCF	    RBIF
-    RETURN
+    BTFSC   PORTB, 0		; Check pushbutton 0
+    RETURN			; If not pressed, end interruption
+    INVERT_BITS PB_FLAG, 0x01	; Invert value of edit mode flag
     
-    PB1:
     ; Pushbutton 1: Navigation of functions/displays
     BTFSC   PORTB, 1		; Check pushbutton 1
-    GOTO    CLR
-    INVERT_BITS PORTE, 0X01
+    RETURN			; If not pressed, end interruption
+    ;REG_NAVI MODE_EN, 3		; Navigate function bits when button is pressed
+    BSF	    PORTA, 0
     
-    CLR:
     BCF	    RBIF		; Clean PORTB interruption flag
+    
     RETURN
     
 PSECT code, delta=2, abs
@@ -263,7 +269,6 @@ MAIN:				; PROGRAM SETUP
     CALL    CONFIG_TMR0		; TMR0 config
     CALL    CONFIG_IOCB		; PORTB interruptions config
     CALL    CONFIG_INT		; Interruptions config
-    ;CALL    DEFAULT_VALUES	; Set default initial values
     
     RESET_TMR0			; Reset TMR0
     
@@ -372,6 +377,8 @@ CONFIG_INT:			; INTERRUPTIONS CONFIGURATION
     MOVF    PORTB		; Read PORTB
     BCF	    RBIF		; Clean PORTB interruption flag
     BSF	    RBIE		; Enable PORTB interruptions
+    BCF     INTF
+    BSF     INTE
    
     RETURN
 
@@ -438,10 +445,6 @@ NAV_DISPLAYS:			; NAVIGATE DISPLAYS (IN EDIT MODE)
     BCF	    DISPLAY_EN, 3	; Disable current display (display 3)
     BSF	    DISPLAY_EN, 0	; Enable display 0 again
     
-    RETURN
-    
-DEFAULT_VALUES:
-    BSF	    MODE_EN, 0		; Default function: CLK
     RETURN
     
 DISPLAY_INC:
@@ -537,5 +540,6 @@ DISPLAY_3:			; SHOW DISPLAY 3
     RETURN
     MOVF    DISP_3, W
     MOVWF   PORTC
+    RETURN
     
 END
