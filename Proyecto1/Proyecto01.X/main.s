@@ -4,7 +4,7 @@
 ;   COMPILADOR:		pic-as (v2.32), MPLABX v6.00
 ;
 ;   CREADO:		05/03/2022
-;   MODIFICADO:		19/03/2022
+;   MODIFICADO:		20/03/2022
 ;
 ;   PROGRAMA:		Proyecto 1: Reloj digital
 ;   HARDWARE:
@@ -68,6 +68,13 @@ INVERT_BITS MACRO REG, BITS	    ; INVERT VALUE OF SELECTED BITS
     MOVWF   REG			    ; Move W back to the selected register
     ENDM
     
+NAVIGATE_REG MACRO REG, LIMIT	    ; NAVIGATE BIT BY BIT IN A REGISTER
+    RLF	    REG			    ; Rotate bits through the left
+    BCF	    REG, 0		    ; Clear first bit
+    BTFSC   REG, LIMIT		    ; Check last desired bit
+    BSF	    REG, 0		    ; Set first bit to reset the rotation.
+    
+    ENDM
     
 ;-------------------- VARIABLES ------------------------------------------------
 
@@ -130,24 +137,18 @@ PSECT udata_bank0		; PROGRAM VARIABLES
     PB_FLAG:	    DS 1	; PUSHBUTTON FLAGS: INDICATE ACTION TO DO
 		    
 		    ; Bits	  | 7  | 6  | 5  | 4  | 3  | 2  | 1  | 0  |
-		    ; Content	  |F3  |F2  |F1  |F0  |PB3 |PB2 |PB1 |PB0 |
+		    ; Content	  |    |    |    |    |PB3 |PB2 |PB1 |PB0 |
 		    
-		    ; Bits 0-3: Pushbutton values
-		    ; Bits 4-6: Pushbutton flags
-		    
-		    ; 0-3: Pushbuttons 1-3 input values, respectively.
-			; 1: Pressed
-			; 0: Not pressed
-		    ; 4: Edition mode flag
+		    ; 0: Edition mode flag
 			; 1: Edition mode activated
 			; 0: Edition mode desactivated
-		    ; 5: Navigation mode flag
+		    ; 1: Navigation mode flag
 			; 1: Navigate displays: 1-4 
 			; 0: Navigate functions: CLK, DATE, TMR and ALRM
-		    ; 6: Action 1 flag
+		    ; 2: Action 1 flag
 			; 1: Increment current display value
 			; 0: Enable start for TMR/ALRM
-		    ; 7: Action 2 flag
+		    ; 3: Action 2 flag
 			; 1: Decrement current display value
 			; 0: Enable stop for TMR/ALRM
 				
@@ -203,24 +204,25 @@ INT_TMR0:			; TMR0 INTERRUPTIONS: VALUE CONTROL AND OUTPUTS
     
     ; Set output values
     CALL    SET_LEDS		; Set values of all LEDs
+    CALL    SELECT_DISPLAY	; Select current display
     
     RETURN
     
 INT_PORTB:			; PORTB INTERRUPTION: CHECK ALL INPUTS
     
-    PB0:
-    ; Pushbutton 0: Edition mode control
+    PB0:			; PUSHBUTTON 0: EDIT MODE
     BTFSC   PORTB, 0		; Check pushbutton 0  
-    GOTO    PB1
-    INVERT_BITS	PB_FLAG, 0X01
-    BCF	    RBIF
-    RETURN
+    GOTO    PB1			; If not pressed, then go to next pushbutton.
+    INVERT_BITS	PB_FLAG, 0X01	; If pressed, invert edit mode flag.
+    GOTO    CLR			; Then clear RBIF flag to end interruption.
     
-    PB1:
-    ; Pushbutton 1: Navigation of functions/displays
+    PB1:			; PUSHBUTTON 1: DISPLAY/FUNCTION NAVIGATION
     BTFSC   PORTB, 1		; Check pushbutton 1
-    GOTO    CLR
-    INVERT_BITS PORTE, 0X01
+    GOTO    CLR			; If not pressed, then go to clear RBIF.	
+    BTFSC   PB_FLAG, 1		; If flag is set, navigate displays.
+    NAVIGATE_REG DISPLAY_EN, 4
+    BTFSS   PB_FLAG, 1		; If flag is clear, navigate functions.
+    NAVIGATE_REG MODE_EN, 4
     
     CLR:
     BCF	    RBIF		; Clean PORTB interruption flag
@@ -263,7 +265,7 @@ MAIN:				; PROGRAM SETUP
     CALL    CONFIG_TMR0		; TMR0 config
     CALL    CONFIG_IOCB		; PORTB interruptions config
     CALL    CONFIG_INT		; Interruptions config
-    ;CALL    DEFAULT_VALUES	; Set default initial values
+    CALL    DEFAULT_VALUES	; Set default values
     
     RESET_TMR0			; Reset TMR0
     
@@ -284,11 +286,11 @@ CONFIG_IO:			; I/O CONFIG
     BANKSEL TRISA		; Bank 1
     
     ; Clean all TRIS registers
-    CLRF    TRISA
-    CLRF    TRISB
-    CLRF    TRISC
-    CLRF    TRISD
-    CLRF    TRISE
+    CLRF    TRISA		; Set TRISA as output
+    CLRF    TRISB	
+    CLRF    TRISC		; Set TRISC as output
+    CLRF    TRISD		; Set TRISD as output
+    CLRF    TRISE		; Set TRISE as output
     
     ; Set TRIS registers as inputs
     BSF	    TRISB, 0		; Pushbutton 0 (Edit mode)
@@ -307,6 +309,7 @@ CONFIG_IO:			; I/O CONFIG
     ; Clean registers:
     CLRF    PB_FLAG		; Clear pushbutton flags
     CLRF    MODE_EN		; Clear functions flags
+    CLRF    DISPLAY_EN		; Clear display enables
     CLRF    DISP_0		; Clear display 0
     CLRF    DISP_1		; Clear display 1
     CLRF    DISP_2		; Clear display 2
@@ -376,28 +379,21 @@ CONFIG_INT:			; INTERRUPTIONS CONFIGURATION
     RETURN
 
 ;-------------------- SETUP SUBROUTINES ----------------------------------------
-    
-SET_NAVIGATION:			; SET NAVIGATION OF DISPLAYS OR FUNCTIONS
-    BTFSC   PB_FLAG, 1		; If set, enable display navigation
-    CALL    NAV_DISPLAYS
-    BTFSS   PB_FLAG, 1		; If clear, enable function navigation
-    CALL    NAV_FUNCTIONS
-    RETURN
-    
-SET_ACTION_1:			; SET VALUE INCREMENT OR START FUNCTION
-    BTFSC   PB_FLAG, 2		; If set, enable increment of display value
-    CALL    DISPLAY_INC
-    BTFSS   PB_FLAG, 2		; If clear, enable start action for TMR
-    CALL    FUNC_START
-    RETURN
-    
-SET_ACTION_2:			; SET VALUE DECREMENT OR STOP FUNCTION
-    BTFSC   PB_FLAG, 3		; If set, enable decrement of display value
-    CALL    DISPLAY_DEC		
-    BTFSS   PB_FLAG, 3		; If clear, enable stop action for TMR
-    CALL    FUNC_STOP
-    RETURN
-    
+;    
+;SET_ACTION_1:			; SET VALUE INCREMENT OR START FUNCTION
+;    BTFSC   PB_FLAG, 2		; If set, enable increment of display value
+;    CALL    DISPLAY_INC
+;    BTFSS   PB_FLAG, 2		; If clear, enable start action for TMR
+;    CALL    FUNC_START
+;    RETURN
+;    
+;SET_ACTION_2:			; SET VALUE DECREMENT OR STOP FUNCTION
+;    BTFSC   PB_FLAG, 3		; If set, enable decrement of display value
+;    CALL    DISPLAY_DEC		
+;    BTFSS   PB_FLAG, 3		; If clear, enable stop action for TMR
+;    CALL    FUNC_STOP
+;    RETURN
+;    
 SET_EDIT_MODE:			; SET FLAG VALUES TO USE EDIT MODE
     
     ; Pushbutton flags
@@ -422,42 +418,9 @@ SET_NORMAL_MODE:		; CLEAR FLAG VALUES TO USE NORMAL MODE
     
     RETURN
     
-NAV_FUNCTIONS:			; NAVIGATE FUNCTIONS (IN NORMAL MODE)
-    RLF	    MODE_EN		; Disable current function, enable next one
-    BTFSS   MODE_EN, 3		; End subroutine if 0 (not in the last function)
-    RETURN			
-    BCF	    MODE_EN, 3		; Disable current function (last function)
-    BSF	    MODE_EN, 0		; Enable first function again
-    
-    RETURN
-    
-NAV_DISPLAYS:			; NAVIGATE DISPLAYS (IN EDIT MODE)
-    RLF	    DISPLAY_EN		; Disable current display, enable next display
-    BTFSS   DISPLAY_EN, 3	; End subroutine if 0 (not in display 3)
-    RETURN
-    BCF	    DISPLAY_EN, 3	; Disable current display (display 3)
-    BSF	    DISPLAY_EN, 0	; Enable display 0 again
-    
-    RETURN
-    
-DEFAULT_VALUES:
-    BSF	    MODE_EN, 0		; Default function: CLK
-    RETURN
-    
-DISPLAY_INC:
-    
-    RETURN
-    
-FUNC_START:
-    
-    RETURN
-    
-FUNC_STOP:
-    
-    RETURN
-    
-DISPLAY_DEC:
-    
+DEFAULT_VALUES:		; INITIAL VALUES OF FUNCTIONS AND DISPLAY
+    BSF	    MODE_EN, 0
+    BSF	    DISPLAY_EN, 0
     RETURN
     
 ;-------------------- CONTROL SUBROUTINES --------------------
@@ -477,7 +440,7 @@ SET_LEDS:			; PREPARE VALUES FOR LEDS
    
     RETURN
     
-SET_DISPLAYS:			; PREPARE VALUES FOR DISPLAYS
+DISPLAY_VALUES:			; PREPARE VALUES FOR DISPLAYS
     
     ; Display 0
     MOVF    DISP_0, W
@@ -503,11 +466,13 @@ SET_DISPLAYS:			; PREPARE VALUES FOR DISPLAYS
     
 SET_DOTS:			; SET VALUES FOR CENTRAL DOTS
     MOVF    DOTS, W		; Move DOTS value to W
+    ANDLW   0X10		; 0001 0000: Bit 5 corresponds to DOTS selector
     MOVWF   PORTC		; Move W to PORTC
     RETURN
     
 SELECT_DISPLAY:			; UPDATE DISPLAY SELECTORS
     MOVF    DISPLAY_EN, W	; Move Display (and Dots) enables to W
+    ANDLW   0X0F		; 0000 1111: Bits 0-3 are display selectors.
     MOVWF   PORTD		; Move W to PORTD, to update enables
     RETURN
     
