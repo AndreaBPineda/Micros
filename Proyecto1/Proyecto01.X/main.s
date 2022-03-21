@@ -14,18 +14,15 @@
 ;	- ENTRADAS:
 ;	    - Pushbutton 01 - Modo de edicion		    (PORTB: RB0)
 ;	    - Pushbutton 02 - Funcion/Display		    (PORTB: RB1)
-;	    - Pushbutton 03 - Incrementar/iniciar	    (PORTB: RB2)
-;	    - Pushbutton 04 - Decrementar/detener	    (PORTB: RB3)
+;	    - Pushbutton 03 - Incrementar/decrementar	    (PORTB: RB2)
+;	    - Pushbutton 04 - Iniciar/Detener		    (PORTB: RB3)
 ;
 ;	- SALIDAS:
 ;	    - LEDs (x4)	    - Indicadores de función	    (PORTA: RA0-RA3)
 ;	    - LEDs (x1)     - Indicador de edición          (PORTA: RA4)
-;	    - LEDs (x1)	    - Alarma			    (PORTA: RA5)
-;	    - Display (7seg, 4digits) - Pantalla de reloj
-;	      (displays 0-3 de izquierda a derecha)
+;	    - Display de 7 segmentos (x4) - Pantalla del reloj
 ;		- Segmentos de displays			    (PORTC: RC0-RC7)
 ;		- Selectores de displays		    (PORTD: RD0-RD3)
-;		- Segmento de puntos centrales		    (PORTD: RD4)
 
 ;-------------------- DISPOSITIVO Y LIBRERIAS ----------------------------------
 PROCESSOR 16F887
@@ -73,7 +70,6 @@ NAVIGATE_REG MACRO REG, LIMIT	    ; NAVIGATE BIT BY BIT IN A REGISTER
     BCF	    REG, 0		    ; Clear first bit
     BTFSC   REG, LIMIT		    ; Check last desired bit
     BSF	    REG, 0		    ; Set first bit to reset the rotation.
-    
     ENDM
     
 ;-------------------- VARIABLES ------------------------------------------------
@@ -95,9 +91,6 @@ PSECT udata_bank0		; PROGRAM VARIABLES
     
     TMR_MIN:	    DS 1	; Timer: minutes
     TMR_SEC:	    DS 1	; Timer: seconds
-    
-    ALRM_HRS:	    DS 1	; Alarm: hours
-    ALRM_MIN:	    DS 1	; Alarm: minutes
 				    
     DISP_0:	    DS 1	; Display 0 value
     DISP_1:	    DS 1	; Display 1 value
@@ -109,27 +102,23 @@ PSECT udata_bank0		; PROGRAM VARIABLES
     
     MODE_EN:	    DS 1	; MODE/FUNCTION ENABLES
     
-		    ; Bits	  | 7  | 6     | 5    | 4  | 3  | 2  | 1  | 0  |
-		    ; Content	  |    |ALRM_ON|TMR_ON|EDIT|ALRM|TMR |DATE|CLK |
+		    ; Bits	  | 7  | 6  | 5  | 4    | 3  | 2  | 1  | 0  |
+		    ; Content	  |    |    |    |TMR_ON|EDIT|TMR |DATE|CLK |
 		    
-		    ; 0-3: Function (Only one set at a time)
-		    ; 4	 : Edit mode
+		    ; 0-2: Function (Only one set at a time)
+		    ; 3	 : Edit mode
 			; 1: enabled
 			; 0: disabled
-		    ; 5  : Start/Stop TMR
-			; 1: start
-			; 0: stop
-		    ; 6  : Start/Stop ALRM
+		    ; 4  : Start/Stop TMR
 			; 1: start
 			; 0: stop
 		    
     DISPLAY_EN:     DS 1	; DISPLAY ENABLES: SELECTOR FOR DISPLAYS
 		    
 		    ; Bits	  | 7  | 6  | 5  | 4  | 3  | 2  | 1  | 0  |
-		    ; Content	  |    |    |    |DOTS|D3  |D2  |D1  |D0  |
+		    ; Content	  |    |    |    |    |D3  |D2  |D1  |D0  |
 		    
 		    ; 0-3: Enable Display 1-4, respectively
-		    ; 4  : Enable center dots of the display module.
     
 		    ; In all cases: 1 is on, and 0 is off.
 		    
@@ -147,10 +136,10 @@ PSECT udata_bank0		; PROGRAM VARIABLES
 			; 0: Navigate functions: CLK, DATE, TMR and ALRM
 		    ; 2: Action 1 flag
 			; 1: Increment current display value
-			; 0: Enable start for TMR/ALRM
+			; 0: Decrement current display value
 		    ; 3: Action 2 flag
-			; 1: Decrement current display value
-			; 0: Enable stop for TMR/ALRM
+			; 1: Start TMR
+			; 0: Stop TMR
 				
 PSECT resVect, class=CODE, abs, delta=2
 ORG 00h				; Posicion 0000h: Vector Reset
@@ -179,8 +168,6 @@ ISR:				; INTERRUPTIONS
     CALL    INT_PORTB		; Execute PORTB interruption on RBIF = 1
     BTFSC   T0IF		; Check TMR0 interruption flag
     CALL    INT_TMR0		; Execute TMR0 interruption on T0IF = 1
-    BCF	    INTF
-    BSF	    INTE
     
 POP:				; RECOVER W AND STATUS VALUES
     
@@ -204,25 +191,26 @@ INT_TMR0:			; TMR0 INTERRUPTIONS: VALUE CONTROL AND OUTPUTS
     
     ; Set output values
     CALL    SET_LEDS		; Set values of all LEDs
-    CALL    SELECT_DISPLAY	; Select current display
+    BSF	    PORTC, 0
     
     RETURN
     
 INT_PORTB:			; PORTB INTERRUPTION: CHECK ALL INPUTS
     
-    PB0:			; PUSHBUTTON 0: EDIT MODE
+    PB0:
     BTFSC   PORTB, 0		; Check pushbutton 0  
-    GOTO    PB1			; If not pressed, then go to next pushbutton.
-    INVERT_BITS	PB_FLAG, 0X01	; If pressed, invert edit mode flag.
-    GOTO    CLR			; Then clear RBIF flag to end interruption.
+    GOTO    PB1
+    INVERT_BITS PB_FLAG, 0X01	; If pressed, invert edit mode flag.
     
-    PB1:			; PUSHBUTTON 1: DISPLAY/FUNCTION NAVIGATION
+    PB1:
     BTFSC   PORTB, 1		; Check pushbutton 1
-    GOTO    CLR			; If not pressed, then go to clear RBIF.	
+    GOTO    CLR			; If not pressed, go to Pushbutton 2
     BTFSC   PB_FLAG, 1		; If flag is set, navigate displays.
     NAVIGATE_REG DISPLAY_EN, 4
     BTFSS   PB_FLAG, 1		; If flag is clear, navigate functions.
     NAVIGATE_REG MODE_EN, 4
+    
+    BSF	    PORTC, 1
     
     CLR:
     BCF	    RBIF		; Clean PORTB interruption flag
@@ -258,6 +246,7 @@ DISPLAY_TABLE:			; 7Seg Display values table
     RETLW   01111001B		; E
     RETLW   01110001B		; F
     
+    
 ;-------------------- MAIN PROGRAM --------------------
 MAIN:				; PROGRAM SETUP
     CALL    CONFIG_IO		; I/O config
@@ -272,7 +261,7 @@ MAIN:				; PROGRAM SETUP
     BANKSEL PORTA		; Bank 0
     
 LOOP:				; MAIN LOOP
-    
+    BSF	    PORTC, 2
     GOTO    LOOP
     
 ;-------------------- CONFIGURATION SUBROUTINES --------------------
@@ -287,34 +276,26 @@ CONFIG_IO:			; I/O CONFIG
     
     ; Clean all TRIS registers
     CLRF    TRISA		; Set TRISA as output
-    CLRF    TRISB	
-    CLRF    TRISC		; Set TRISC as output
-    CLRF    TRISD		; Set TRISD as output
-    CLRF    TRISE		; Set TRISE as output
+    CLRF    TRISB
+    CLRF    TRISC
     
     ; Set TRIS registers as inputs
     BSF	    TRISB, 0		; Pushbutton 0 (Edit mode)
     BSF	    TRISB, 1		; Pushbutton 1 (Functions)
-    BSF	    TRISB, 2		; Pushbutton 2 (Increment/start)
-    BSF	    TRISB, 3		; Pushbutton 3 (Decrement/stop)
+    BSF	    TRISB, 2		; Pushbutton 2 (Increment/decrement)
+    BSF	    TRISB, 3		; Pin defectuoso
+    BSF	    TRISB, 4		; Pushbutton 3 (Start/stop)
     
     ; Clean ports:
     BANKSEL PORTA		; Bank 0
     CLRF    PORTA		
-    CLRF    PORTB		
-    CLRF    PORTC		
-    CLRF    PORTD
-    CLRF    PORTE
+    CLRF    PORTB
+    CLRF    PORTC
     
     ; Clean registers:
     CLRF    PB_FLAG		; Clear pushbutton flags
     CLRF    MODE_EN		; Clear functions flags
     CLRF    DISPLAY_EN		; Clear display enables
-    CLRF    DISP_0		; Clear display 0
-    CLRF    DISP_1		; Clear display 1
-    CLRF    DISP_2		; Clear display 2
-    CLRF    DISP_3		; Clear display 3
-    CLRF    DOTS		; Clear central dots flag
     
     RETURN
     
@@ -349,6 +330,7 @@ CONFIG_IOCB:			; PORTB CONFIGURATION FOR PUSHBUTTONS
     BSF	    IOCB, 1
     BSF	    IOCB, 2
     BSF	    IOCB, 3
+    BSF	    IOCB, 4
     
     ; Enable weak pull-up
     CLRF    WPUB
@@ -356,6 +338,7 @@ CONFIG_IOCB:			; PORTB CONFIGURATION FOR PUSHBUTTONS
     BSF	    WPUB, 1
     BSF	    WPUB, 2
     BSF	    WPUB, 3
+    BSF	    WPUB, 4
     
     BCF	    OPTION_REG, 7	; Enable PORTB internal pull-ups
     BCF	    OPTION_REG, 6	; Enable falling edge of INT pin interrupt
@@ -379,47 +362,23 @@ CONFIG_INT:			; INTERRUPTIONS CONFIGURATION
     RETURN
 
 ;-------------------- SETUP SUBROUTINES ----------------------------------------
-;    
-;SET_ACTION_1:			; SET VALUE INCREMENT OR START FUNCTION
-;    BTFSC   PB_FLAG, 2		; If set, enable increment of display value
-;    CALL    DISPLAY_INC
-;    BTFSS   PB_FLAG, 2		; If clear, enable start action for TMR
-;    CALL    FUNC_START
-;    RETURN
-;    
-;SET_ACTION_2:			; SET VALUE DECREMENT OR STOP FUNCTION
-;    BTFSC   PB_FLAG, 3		; If set, enable decrement of display value
-;    CALL    DISPLAY_DEC		
-;    BTFSS   PB_FLAG, 3		; If clear, enable stop action for TMR
-;    CALL    FUNC_STOP
-;    RETURN
-;    
+    
 SET_EDIT_MODE:			; SET FLAG VALUES TO USE EDIT MODE
     
-    ; Pushbutton flags
     BSF	    PB_FLAG, 1		; Enable display navigation
-    BSF	    PB_FLAG, 2		; Enable display value increment
-    BSF	    PB_FLAG, 3		; Enable display value decrement
-    
-    ; Mode enables
     BSF	    MODE_EN, 4		; Enable edit mode
     
     RETURN
     
 SET_NORMAL_MODE:		; CLEAR FLAG VALUES TO USE NORMAL MODE
     
-    ; Pushbutton flags
     BCF	    PB_FLAG, 1		; Enable function navigation
-    BCF	    PB_FLAG, 2		; Enable TMR and ALRM start function
-    BCF	    PB_FLAG, 3		; Enable TMR and ALRM stop function
-    
-    ; Mode enables
     BSF	    DISPLAY_EN, 0	; Set default display to edit
     BCF	    MODE_EN, 4		; Disable edit mode
     
     RETURN
     
-DEFAULT_VALUES:		; INITIAL VALUES OF FUNCTIONS AND DISPLAY
+DEFAULT_VALUES:			; INITIAL VALUES OF FUNCTIONS AND DISPLAY
     BSF	    MODE_EN, 0
     BSF	    DISPLAY_EN, 0
     RETURN
@@ -431,7 +390,6 @@ RESET_CLK:			; RESET HRS, MINUTES AND SECONDS OF CLOCK
     RESET_COUNT CLK_MIN, 59	; Reset minutes at 60 (Count goes 0-59)
     RESET_COUNT CLK_SEC, 59	; Reset seconds at 60 (Count goes 0-59)
     RETURN
-    
 ;-------------------- OUTPUT SUBROUTINES --------------------
        
 SET_LEDS:			; PREPARE VALUES FOR LEDS
@@ -463,12 +421,6 @@ DISPLAY_VALUES:			; PREPARE VALUES FOR DISPLAYS
     CALL    DISPLAY_TABLE
     MOVWF   DISP_3
     
-    RETURN
-    
-SET_DOTS:			; SET VALUES FOR CENTRAL DOTS
-    MOVF    DOTS, W		; Move DOTS value to W
-    ANDLW   0X10		; 0001 0000: Bit 5 corresponds to DOTS selector
-    MOVWF   PORTC		; Move W to PORTC
     RETURN
     
 SELECT_DISPLAY:			; UPDATE DISPLAY SELECTORS
