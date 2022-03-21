@@ -4,7 +4,7 @@
 ;   COMPILADOR:		pic-as (v2.32), MPLABX v6.00
 ;
 ;   CREADO:		05/03/2022
-;   MODIFICADO:		20/03/2022
+;   MODIFICADO:		21/03/2022
 ;
 ;   PROGRAMA:		Proyecto 1: Reloj digital
 ;   HARDWARE:
@@ -15,7 +15,7 @@
 ;	    - Pushbutton 01 - Modo de edicion		    (PORTB: RB0)
 ;	    - Pushbutton 02 - Funcion/Display		    (PORTB: RB1)
 ;	    - Pushbutton 03 - Incrementar/decrementar	    (PORTB: RB2)
-;	    - Pushbutton 04 - Iniciar/Detener		    (PORTB: RB3)
+;	    - Pushbutton 04 - Iniciar/Detener		    (PORTB: RB4)
 ;
 ;	- SALIDAS:
 ;	    - LEDs (x4)	    - Indicadores de función	    (PORTA: RA0-RA3)
@@ -45,11 +45,11 @@ CONFIG WRT=OFF
 CONFIG BOR4V=BOR40V
     
 ;-------------------- MACROS ---------------------------------------------------
-RESET_TMR0 MACRO		; RESET TMR0
-    BANKSEL TMR0		; Bank 0
-    MOVLW   255			; Interruption time
-    MOVWF   TMR0		; Set interruption time in TMR0
-    BCF	    T0IF		; Clear interruption flag TMR0
+RESET_TMR0 MACRO		    ; RESET TMR0
+    BANKSEL TMR0		    ; Bank 0
+    MOVLW   255			    ; Interruption time
+    MOVWF   TMR0		    ; Set interruption time in TMR0
+    BCF	    T0IF		    ; Clear interruption flag TMR0
     ENDM
     
 RESET_COUNT MACRO COUNTER, LIMIT    ; RESET COUNTER AT SELECTEC LIMIT
@@ -72,6 +72,23 @@ NAVIGATE_REG MACRO REG, LIMIT	    ; NAVIGATE BIT BY BIT IN A REGISTER
     BSF	    REG, 0		    ; Set first bit to reset the rotation.
     ENDM
     
+INCREMENT_VALUE MACRO DISPLAY	    ; INCREMENT SELECTED DISPLAY VALUE
+    INCF    DISPLAY, W		    ; Increment register value and save in W
+    MOVWF   DISPLAY		    ; Move W back to register
+    ENDM
+    
+DECREASE_VALUE MACRO DISPLAY	    ; DECREASE SELECTED DISPLAY VALUE
+    DECF    DISPLAY, W		    ; Decrease register value and save in W
+    MOVWF   DISPLAY		    ; Move W back to register
+    ENDM
+    
+DECIMAL_COUNTER MACRO COUNTER, UNITS, DECADES
+ 
+    GET_DECADES:
+    GET_UNITS:
+	
+    ENDM
+    
 ;-------------------- VARIABLES ------------------------------------------------
 
 PSECT udata_shr			; INTERRUPTION VARIABLES
@@ -82,12 +99,12 @@ PSECT udata_bank0		; PROGRAM VARIABLES
     
     ; Counter registers for all functions
     
-    CLK_HRS:	    DS 1	; Clock: hours
-    CLK_MIN:	    DS 1	; Clock: minutes
-    CLK_SEC:	    DS 1	; Clock: seconds
+    CLK_HRS:	    DS 1	; Clock: Hours
+    CLK_MIN:	    DS 1	; Clock: Minutes
+    CLK_SEC:	    DS 1	; Clock: Seconds
     
     DATE_DAY:	    DS 1	; Date: day
-    DATE_MON:	    DS 1	; Date: month
+    DATE_MON_:	    DS 1	; Date: month
     
     TMR_MIN:	    DS 1	; Timer: minutes
     TMR_SEC:	    DS 1	; Timer: seconds
@@ -96,7 +113,10 @@ PSECT udata_bank0		; PROGRAM VARIABLES
     DISP_1:	    DS 1	; Display 1 value
     DISP_2:	    DS 1	; Display 2 value
     DISP_3:	    DS 1	; Display 3 value
-    DOTS:	    DS 1	; Central dots value
+    
+    UNITS_TEMP:	    DS 1	; Temporal register for units
+    DECADES_TEMP:   DS 1	; Temporal register for decades
+    CURRENT_DISPLAY:   DS 1	; Temporal register for current display value
     
     ; Enables and flags
     
@@ -177,7 +197,7 @@ POP:				; RECOVER W AND STATUS VALUES
     SWAPF   W_TEMP, W		; Swap W_TEMP again, save in W
     RETFIE			; End interruptions
     
-;-------------------- SUBRUTINAS DE INTERRUPCION --------------------
+;-------------------- SUBRUTINAS DE INTERRUPCION -------------------------------
     
 INT_TMR0:			; TMR0 INTERRUPTIONS: VALUE CONTROL AND OUTPUTS
     
@@ -191,7 +211,7 @@ INT_TMR0:			; TMR0 INTERRUPTIONS: VALUE CONTROL AND OUTPUTS
     
     ; Set output values
     CALL    SET_LEDS		; Set values of all LEDs
-    BSF	    PORTC, 0
+    CALL    SELECT_DISPLAY_EDIT	; Select display to edit
     
     RETURN
     
@@ -204,13 +224,26 @@ INT_PORTB:			; PORTB INTERRUPTION: CHECK ALL INPUTS
     
     PB1:
     BTFSC   PORTB, 1		; Check pushbutton 1
-    GOTO    CLR			; If not pressed, go to Pushbutton 2
+    GOTO    PB2			; If not pressed, go to Pushbutton 2
     BTFSC   PB_FLAG, 1		; If flag is set, navigate displays.
     NAVIGATE_REG DISPLAY_EN, 4
     BTFSS   PB_FLAG, 1		; If flag is clear, navigate functions.
-    NAVIGATE_REG MODE_EN, 4
+    NAVIGATE_REG MODE_EN, 3
     
-    BSF	    PORTC, 1
+    PB2:			; Check pushbutton 2
+    BTFSC   PORTB, 2		; If not pressed, go to clr
+    GOTO    PB3			
+    BTFSC   PB_FLAG, 2		; If flag is set, increment display value
+    INCREMENT_VALUE CURRENT_DISPLAY
+    BTFSS   PB_FLAG, 2		; If flag is clear, decrease display value
+    DECREASE_VALUE CURRENT_DISPLAY
+    
+    PB3:	
+    BTFSC   PORTB, 4		; Check pushbutton 3 (though it's bit 4 :v)
+    GOTO    CLR
+    BTFSC   PB_FLAG, 3		; If flag is set, start timer.
+    
+    
     
     CLR:
     BCF	    RBIF		; Clean PORTB interruption flag
@@ -247,7 +280,7 @@ DISPLAY_TABLE:			; 7Seg Display values table
     RETLW   01110001B		; F
     
     
-;-------------------- MAIN PROGRAM --------------------
+;-------------------- MAIN PROGRAM ---------------------------------------------
 MAIN:				; PROGRAM SETUP
     CALL    CONFIG_IO		; I/O config
     CALL    CONFIG_CLOCK	; Oscilator config
@@ -261,10 +294,9 @@ MAIN:				; PROGRAM SETUP
     BANKSEL PORTA		; Bank 0
     
 LOOP:				; MAIN LOOP
-    BSF	    PORTC, 2
     GOTO    LOOP
     
-;-------------------- CONFIGURATION SUBROUTINES --------------------
+;-------------------- CONFIGURATION SUBROUTINES --------------------------------
 
 CONFIG_IO:			; I/O CONFIG
     
@@ -276,8 +308,9 @@ CONFIG_IO:			; I/O CONFIG
     
     ; Clean all TRIS registers
     CLRF    TRISA		; Set TRISA as output
-    CLRF    TRISB
-    CLRF    TRISC
+    CLRF    TRISB		
+    CLRF    TRISC		; Set TRISC as output
+    CLRF    TRISD		; Set TRISD as output
     
     ; Set TRIS registers as inputs
     BSF	    TRISB, 0		; Pushbutton 0 (Edit mode)
@@ -286,11 +319,17 @@ CONFIG_IO:			; I/O CONFIG
     BSF	    TRISB, 3		; Pin defectuoso
     BSF	    TRISB, 4		; Pushbutton 3 (Start/stop)
     
+    BCF	    TRISD, 0
+    BCF	    TRISD, 1
+    BCF	    TRISD, 2
+    BCF	    TRISD, 3
+    
     ; Clean ports:
     BANKSEL PORTA		; Bank 0
     CLRF    PORTA		
     CLRF    PORTB
     CLRF    PORTC
+    CLRF    PORTD
     
     ; Clean registers:
     CLRF    PB_FLAG		; Clear pushbutton flags
@@ -366,15 +405,16 @@ CONFIG_INT:			; INTERRUPTIONS CONFIGURATION
 SET_EDIT_MODE:			; SET FLAG VALUES TO USE EDIT MODE
     
     BSF	    PB_FLAG, 1		; Enable display navigation
-    BSF	    MODE_EN, 4		; Enable edit mode
+    BSF	    MODE_EN, 3		; Enable edit mode
+    BCF	    MODE_EN, 0
     
     RETURN
     
 SET_NORMAL_MODE:		; CLEAR FLAG VALUES TO USE NORMAL MODE
     
     BCF	    PB_FLAG, 1		; Enable function navigation
-    BSF	    DISPLAY_EN, 0	; Set default display to edit
-    BCF	    MODE_EN, 4		; Disable edit mode
+    BCF	    MODE_EN, 3		; Disable edit mode
+    
     
     RETURN
     
@@ -383,22 +423,47 @@ DEFAULT_VALUES:			; INITIAL VALUES OF FUNCTIONS AND DISPLAY
     BSF	    DISPLAY_EN, 0
     RETURN
     
-;-------------------- CONTROL SUBROUTINES --------------------
+;-------------------- CONTROL SUBROUTINES --------------------------------------
 
-RESET_CLK:			; RESET HRS, MINUTES AND SECONDS OF CLOCK
-    RESET_COUNT	CLK_HRS, 23	; Reset hours at 24 (Count goes 0-23)
-    RESET_COUNT CLK_MIN, 59	; Reset minutes at 60 (Count goes 0-59)
-    RESET_COUNT CLK_SEC, 59	; Reset seconds at 60 (Count goes 0-59)
-    RETURN
-;-------------------- OUTPUT SUBROUTINES --------------------
-       
-SET_LEDS:			; PREPARE VALUES FOR LEDS
-    MOVF    MODE_EN, W		; Move function enables to W.
-    ANDLW   0X3F		; 0011 1111: Bits 0-5 are LEDs, avoid the rest.
-    MOVWF   PORTA		; Send value to PORTA for updating all LEDs
-   
-    RETURN
-    
+;;SHOW_FUNCTION:			; SET VALUES TO SHOW FOR EACH FUNCTION
+;;    BTFSC   MODE_EN, 0
+;;    GOTO    SET_CLK
+;;    BTFSC   MODE_EN, 1
+;;    GOTO    SET_DATE
+;;    BTFSC   MODE_EN, 2
+;;    GOTO    SET_TMR
+;;    
+;;    SET_CLK:
+;;	MOVF	CLK_MIN_UNITS, W
+;;	MOVWF	DISP_0
+;;	MOVF	CLK_MIN_DECS, W
+;;	MOVWF	DISP_1
+;;	MOVF	CLK_HRS_UNITS, W
+;;	MOVWF	DISP_2
+;;	MOVF	CLK_HRS_DECS, W
+;;	MOVWF	DISP_3
+;;	
+;;    SET_DATE:
+;;	MOVF	DATE_DAY_UNITS, W
+;;	MOVWF	DISP_0
+;;	MOVF	DATE_DAY_DECS, W
+;;	MOVWF	DISP_1
+;;	MOVF	DATE_MON_UNITS, W
+;;	MOVWF	DISP_2
+;;	MOVF	DATE_MON_DECS, W
+;;	
+;;    SET_TMR:
+;;	MOVF	TMR_SEC_UNITS, W
+;;	MOVWF	DISP_0
+;;	MOVF	TMR_SEC_DECS, W
+;;	MOVWF	DISP_1
+;;	MOVF	TMR_MIN_UNITS, W
+;;	MOVWF	DISP_2
+;;	MOVF	TMR_MIN_DECS, W
+;;	MOVWF	DISP_3
+;;	
+;;    RETURN
+	
 DISPLAY_VALUES:			; PREPARE VALUES FOR DISPLAYS
     
     ; Display 0
@@ -423,7 +488,16 @@ DISPLAY_VALUES:			; PREPARE VALUES FOR DISPLAYS
     
     RETURN
     
-SELECT_DISPLAY:			; UPDATE DISPLAY SELECTORS
+;-------------------- OUTPUT SUBROUTINES ---------------------------------------
+    
+SET_LEDS:			; PREPARE VALUES FOR LEDS
+    MOVF    MODE_EN, W		; Move function enables to W.
+    ANDLW   0X3F		; 0011 1111: Bits 0-5 are LEDs, avoid the rest.
+    MOVWF   PORTA		; Send value to PORTA for updating all LEDs
+   
+    RETURN
+    
+SELECT_DISPLAY_EDIT:		; UPDATE DISPLAY SELECTORS
     MOVF    DISPLAY_EN, W	; Move Display (and Dots) enables to W
     ANDLW   0X0F		; 0000 1111: Bits 0-3 are display selectors.
     MOVWF   PORTD		; Move W to PORTD, to update enables
