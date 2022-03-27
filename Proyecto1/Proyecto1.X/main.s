@@ -4,7 +4,7 @@
 ;   COMPILADOR:		pic-as (v2.32), MPLABX v6.00
 ;
 ;   CREADO:		05/03/2022
-;   MODIFICADO:		22/03/2022
+;   MODIFICADO:		26/03/2022
 ;
 ;   PROGRAMA:		Proyecto 1: Reloj digital
 ;   HARDWARE:
@@ -194,12 +194,15 @@ INT_TMR0:			; TIMER 0 INTERRUPTION
     
     CALL    SELECT_DISPLAY
     
+    ; Check CLK function flag
     BTFSC   MODE_EN, 0
     CALL    CLK
     
+    ; Check DATE function flag
     BTFSC   MODE_EN, 1
     CALL    DATE
-    
+
+	; Check TMR function flag    
     BTFSC   MODE_EN, 2
     CALL    SET_DISPLAY_TMR
     
@@ -416,10 +419,10 @@ DATE:
     DECIMAL_COUNTER DATE_DAY_UNITS, DATE_DAY_DECS, 9
     
     ; Month: 01
-    MOVF    DATE_MONTH
-    SUBLW   1
+    MOVF    DATE_MONTH 				; Check value of month counter
+    SUBLW   1						; In each case, select the subroutine with the right amount of days.
     BTFSC   STATUS, 0
-    CALL    MONTH_31_DAYS
+    CALL    MONTH_31_DAYS			; Days counter, limited to a specific amount of days depending on the month.
     
     ; Month: 02
     MOVF    DATE_MONTH
@@ -494,30 +497,32 @@ DATE:
     
     RETURN
     
-MONTH_30_DAYS:
-    RESET_COUNT DATE_DAY_DECS, DATE_DAY_UNITS, 3, 0, DATE_MONTH_FLAG
-    BTFSC   DATE_MONTH_FLAG, 0
+; Month counters
+
+MONTH_30_DAYS:						; 30 day month counter
+    RESET_COUNT DATE_DAY_DECS, DATE_DAY_UNITS, 3, 0, DATE_MONTH_FLAG ; Decimal counter for days
+    BTFSC   DATE_MONTH_FLAG, 0							; If flag is set, the limit of the current month was reached.
     RETURN
-    CALL    NEXT_MONTH
+    CALL    NEXT_MONTH									; Go to the following month.
     
     RETURN
     
-MONTH_31_DAYS:
-    RESET_COUNT DATE_DAY_DECS, DATE_DAY_UNITS, 3, 1, DATE_MONTH_FLAG
-    BTFSC   DATE_MONTH_FLAG, 0
+MONTH_31_DAYS:											; 31 day counter
+    RESET_COUNT DATE_DAY_DECS, DATE_DAY_UNITS, 3, 1, DATE_MONTH_FLAG	; Decimal counter for days
+    BTFSC   DATE_MONTH_FLAG, 0							; If flag is set, the limit of the month has been reached
     RETURN
-    CALL    NEXT_MONTH
+    CALL    NEXT_MONTH									; Go to the following month
     
     RETURN
     
-MONTH_28_DAYS:
-    RESET_COUNT DATE_DAY_DECS, DATE_DAY_UNITS, 2, 8, DATE_MONTH_FLAG
-    BTFSC   DATE_MONTH_FLAG, 0
+MONTH_28_DAYS:											; 28 day counter
+    RESET_COUNT DATE_DAY_DECS, DATE_DAY_UNITS, 2, 8, DATE_MONTH_FLAG ; Decimal counter of days
+    BTFSC   DATE_MONTH_FLAG, 0								; If flag is set, the limit of the month was reached
     RETURN
-    CALL    NEXT_MONTH
+    CALL    NEXT_MONTH										; Go to the following month.
     RETURN
     
-CLK_OVERFLOW:
+CLK_OVERFLOW:				; CLK overflow: clear all registers with clk values to return to 00:00
     
     CLRF    CLK_SEC
     CLRF    UNITS_1
@@ -527,11 +532,11 @@ CLK_OVERFLOW:
     
     RETURN
     
-NEXT_MONTH:
+NEXT_MONTH:					; set next month
     
-    BCF	DATE_MONTH_FLAG, 0
-    INCF    DATE_MON_UNITS
-    DECIMAL_COUNTER DATE_MON_UNITS, DATE_MON_DECS, 9
+    BCF	DATE_MONTH_FLAG, 0				; clear flag 
+    INCF    DATE_MON_UNITS				; Increase month counter
+    DECIMAL_COUNTER DATE_MON_UNITS, DATE_MON_DECS, 9 ; Set decimal counter of months
     
     RETURN
     
