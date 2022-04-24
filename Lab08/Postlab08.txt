@@ -1,0 +1,5 @@
+Enlace a Github: https://github.com/AndreaBPineda/Micros
+
+Proteus:
+- Potenciómetro en RA0: DAC - Led para mostrar el funcionamiento porque los números no salían en el voltímetro virtual.
+- Potenciometro en RA1: Displays
