@@ -1,5 +1,0 @@
-Enlace a Github: https://github.com/AndreaBPineda/Micros
-
-Proteus:
-- Potenciómetro en RA0: DAC
-- Potenciometro en RA1: Displays
